@@ -47,10 +47,15 @@ def extract_features(samples, angles):
 
 
 def run_experiment(data_dir=DATA_DIR):
-    """Pipeline wiring for use after the algorithm TODOs are implemented."""
+    """Extract session-1/session-2 features and evaluate the full dataset."""
     train, test = load_dataset(data_dir)
+    print(f"Session 1: {len(train)} training images")
+    print(f"Session 2: {len(test)} testing images")
+    print("Extracting training features at seven rotation angles...")
     train_features, train_labels = extract_features(train, ROTATION_ANGLES)
+    print("Extracting test features...")
     test_features, test_labels = extract_features(test, (0,))
+    print("Evaluating identification and verification...")
     # The matcher compares each unrotated test feature to seven class centers.
     return performance_evaluation(
         train_features, train_labels, test_features[:, 0, :], test_labels
@@ -58,12 +63,8 @@ def run_experiment(data_dir=DATA_DIR):
 
 
 def main():
-    """Show the available split while the recognition stages are being built."""
-    train, test = load_dataset()
-    print(f"Session 1: {len(train)} training images")
-    print(f"Session 2: {len(test)} testing images")
-    print("Scaffold ready. Implement the TODOs before calling run_experiment().")
-    # TODO: replace the preview above with run_experiment() when ready.
+    """Run the experiment and display its tables and plots."""
+    run_experiment()
 
 
 if __name__ == "__main__":

@@ -1,30 +1,39 @@
-Iris recognition - minimal project scaffold
+Iris recognition - simple implementation
 
 Status
 The seven Python files follow GroupProject.pdf. Dataset discovery, pipeline
-wiring, iris localization, normalization, and image enhancement are implemented.
-Feature extraction, matching, and evaluation are still TODOs.
-The main script currently prints the session split. Calling run_experiment()
-will reach an explicit NotImplementedError until the algorithm bodies are filled
-in. This is a starting scaffold, not a completed submission or measured model.
+wiring, iris localization, normalization, image enhancement, feature extraction,
+iris matching, and performance evaluation are implemented.
+The main script runs the session-1/session-2 experiment, prints the recognition
+and threshold tables, and displays the dimension comparison and verification
+ROC plots. run_experiment() also returns the results as a dictionary.
 
 Run from this directory
     .venv/bin/python IrisRecognition.py
+The full run extracts features and fits Fisher reduction for six dimensions,
+so it takes longer than the small visual verification scripts below.
 
 Visual verification scripts are in verify/:
     .venv/bin/python verify/localization_verify.py
     .venv/bin/python verify/normalization_verify.py
     .venv/bin/python verify/enhancement_verify.py
-They show detected circles, normalized strips, and before/after enhancement.
-Normalization and enhancement also print output shapes and datatypes. Each
-script finds the dataset and project modules relative to its own location.
+    .venv/bin/python verify/feature_extraction_verify.py
+    .venv/bin/python verify/matching_verify.py
+They show detected circles, normalized strips, before/after enhancement, and
+the feature means/deviations for each filter channel. Normalization, enhancement,
+and feature extraction also print output shapes and datatypes. Each script finds
+the dataset and project modules relative to its own location.
+The matching script uses three eyes, trains on session 1, and tests on session 2.
+It prints true/predicted labels and subset accuracy for each measure, and plots
+the distance matrices. These subset results are not the full 108-eye evaluation.
+Set n_components=None in that script to inspect matching without Fisher reduction.
 
 Packages
     numpy           -> import numpy as np
     opencv-python   -> import cv2
     scikit-learn    -> sklearn.discriminant_analysis and sklearn.metrics
     matplotlib      -> import matplotlib.pyplot as plt
-These imports are placed in the corresponding modules, ready for their TODOs.
+These imports are placed in the corresponding modules.
 They are already installed in the existing .venv. To install in this environment:
     uv pip install --python .venv/bin/python numpy opencv-python scikit-learn matplotlib
 For an environment with pip, use python -m pip install followed by those names.
@@ -50,17 +59,20 @@ array operations; it does not mean writing every pixel operation as a Python loo
   cv2.resize uses INTER_CUBIC to expand the illumination estimate. cv2.normalize
   maps the corrected image's minimum/maximum to 0/255 as uint8, followed by
   cv2.equalizeHist on each 32x32 block. This uses ordinary local equalization.
-- FeatureExtraction: write the paper's kernel formula, ROI selection, 8x8
-  block statistics, and feature ordering. Let cv2.filter2D apply each custom
-  kernel in floating point. Ordinary getGaborKernel uses a different carrier.
-- IrisMatching: use LinearDiscriminantAnalysis(solver="svd") for Fisher
-  directions. Use its learned scalings_ as W and project with features @ W
-  for equation 7. Its SVD transform() additionally centers data, which affects
-  cosine distance. Write the seven class centers, distances, and minimum over
-  rotations with NumPy. Do not substitute LDA.predict() for nearest centers.
-- PerformanceEvaluation: write the experiments, CRR, and genuine/impostor
-  pair labels. Use roc_curve with negative distances, then FMR=fpr and
-  FNMR=1-tpr. Convert thresholds back by negating them. Use matplotlib to plot.
+- FeatureExtraction: NumPy constructs the paper's kernels and calculates 8x8
+  block statistics; cv2.filter2D applies each kernel in floating point with
+  reflected borders. Features are mean magnitude and mean absolute deviation,
+  ordered by channel, then block row, then block column.
+- IrisMatching: one iris_matching(train_features, train_labels, test_features,
+  n_components=107) call fits LinearDiscriminantAnalysis(solver="svd") on
+  training data, projects with features @ W using its learned scalings_, and
+  calculates class centers and all three distances with NumPy. Its SVD
+  transform() additionally centers data, which affects cosine distance, so
+  projection is explicit. Classification uses nearest centers.
+- PerformanceEvaluation: NumPy handles predictions, CRR, and genuine/impostor
+  claim labels. roc_curve uses negative distances, then FMR=fpr and FNMR=1-tpr.
+  Negate its thresholds to recover distance thresholds. Matplotlib plots the
+  curves; reported rates are multiplied by 100 to give percentages.
 
 API references
     https://docs.opencv.org/4.x/da/d53/tutorial_py_houghcircles.html
@@ -85,7 +97,7 @@ Design and implementation order
    the pupil. This fallback is an estimate, not a detected boundary. The code
    has five numbered steps with parameter explanations. It is intentionally
    naive: eyelids and weak iris boundaries can cause incorrect circles, and
-   the project's recognition target is not yet established.
+   the full-pipeline recognition results are reported below.
 2. IrisNormalization.py: image and circles -> 64x512 unwrapped image.
    Implements equation 2 in five numbered steps, with radial rows and
    counterclockwise angular columns. angle_deg changes the starting angle.
@@ -98,23 +110,42 @@ Design and implementation order
    Independent block equalization can leave visible seams between blocks.
 4. FeatureExtraction.py: filter the first 48 rows using the two circularly
    modulated kernels. Each 8x8 block contributes a mean magnitude and mean
-   absolute deviation, for 1536 features total (equations 3-6).
+   absolute deviation, for 1536 float32 features total (equations 3-6). Seven
+   numbered steps explain the implementation. The starting frequencies are
+   1/8 and 1/16 cycles/pixel. Kernels extend ceil(3 * max(sigma_x, sigma_y))
+   pixels from the center, giving default sizes of 19x19 and 29x29.
 5. IrisMatching.py: fit Fisher reduction on session 1, calculate one mean
    template per eye per angle, and match by L1, L2, and cosine distance.
    Take the minimum across angles -9, -6, -3, 0, 3, 6, 9 degrees.
-6. PerformanceEvaluation.py: use the matching functions for CRR tables,
-   dimension-versus-CRR plotting, threshold tables, and verification ROC.
-7. IrisRecognition.py: the pipeline is already connected in run_experiment().
-   Replace main's split preview with that call after implementing the stages.
+   The single function has seven numbered steps and returns (classes, distances).
+   distances is a dictionary keyed by "L1", "L2", and "cosine"; each matrix
+   has shape (test images, classes), normally (432, 108). Predictions are
+   classes[distances[measure].argmin(axis=1)]. Set n_components=None to use
+   original features; for a subset of eyes, choose at most classes - 1 Fisher
+   dimensions. Cosine distance assumes nonzero features and class templates.
+6. PerformanceEvaluation.py: one function with seven numbered steps prints
+   Table 3 (original/reduced CRR for L1, L2, and cosine), plots Figure 10 (cosine
+   CRR versus Fisher dimensions), prints Table 4, and plots the verification
+   ROC (FMR versus FNMR). Default dimensions are 20, 40, 60, 80, 100, and 107;
+   the last dimension is used for Table 3's reduced column and verification.
+   For a small subset, supply dimensions no larger than the number of eyes - 1.
+   Verification uses cosine distance and every test-to-class claim. Accept a
+   claim when distance <= threshold. Table 4 selects the largest thresholds
+   with measured FMR <= 0.1%, 1%, and 5%, and reports the actual FMR and FNMR.
+   These thresholds describe operating points on the test ROC. All returned
+   rates are percentages. The result dictionary contains crr, dimensions,
+   cosine_crr, threshold_table, roc, and figures; plots are displayed, not saved.
+7. IrisRecognition.py: main() calls run_experiment(), which loads the dataset,
+   extracts training/testing features, and calls performance_evaluation().
 
-Each function documents its inputs, outputs, key parameters, and intended loops.
-Keep those explanations updated as the TODOs become code.
+Each function documents its inputs, outputs, key parameters, and loops.
 
 Paper details to preserve
 - Ma et al. (2003), sections 3.2-3.4 and 4.3, are the implementation references.
 - The two Gaussian (sigma_x, sigma_y) pairs are (3, 1.5) and (4.5, 1.5).
   Numeric carrier frequencies and finite kernel sizes are not specified in
-  the paper; choose and document them when implementing FeatureExtraction.
+  the paper. The frequencies and kernel sizes listed above are our simple
+  implementation choices; they have not been tuned for recognition accuracy.
 - Fisher reduction has at most classes - 1 directions: 107 for CASIA-IrisV1.
   The paper's 200-dimensional setting used a larger database.
 - Equation 8 prints squared Euclidean distance for L2. Use it consistently;
@@ -126,11 +157,33 @@ Paper details to preserve
 - Image quality selection, bootstrap, and confidence intervals are outside
   the assigned implementation scope.
 
+Measured results (November 3, 2026)
+The full run used 108 eyes, 324 session-1 training images, and 432 session-2
+test images with the default parameters. CRR percentages were:
+
+    Measure     Original (1536-D)     Reduced (107-D)
+    L1               87.50                89.35
+    L2               82.41                89.58
+    cosine           83.10                89.81
+
+All three measures exceeded the assignment's >=80% identification target.
+Cosine CRR at 20, 40, 60, 80, 100, and 107 Fisher dimensions was respectively
+75.00%, 84.95%, 88.66%, 89.81%, 89.58%, and 89.81%.
+
+Verification compared 432 genuine claims and 46,224 impostor claims using
+107-D cosine distances. The following values are rounded for display:
+
+    FMR limit (%)     Threshold     Actual FMR (%)     FNMR (%)
+         0.1          0.002879           0.100          30.556
+         1.0          0.003427           0.999          20.602
+         5.0          0.004026           5.000          14.583
+
 Limitations and improvement discussion to complete
-No accuracy has been measured. The final target is >=80% CRR for each distance
-measure. After implementing the pipeline, discuss observed effects of boundary
-localization, eyelid/eyelash occlusion, and pupil deformation, and explain
-improvements supported by your own results.
+Verification still rejects about 30.6% of genuine claims at the 0.1% FMR
+operating point. The simple localization and lack of an occlusion mask remain
+possible sources of error. Inspect incorrect matches to evaluate the effects
+of boundary localization, eyelid/eyelash occlusion, and pupil deformation,
+and explain improvements supported by further experiments.
 
 Submission details to complete
 Replace UNI_UNI2_UNI3 in this filename with the team members' actual UNIs.
