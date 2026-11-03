@@ -1,46 +1,49 @@
-"""Correct illumination and improve local contrast (section 3.2.3)."""
-
 import cv2
 import numpy as np
 
 def image_enhancement(normalized, background_block=16, histogram_block=32):
-    """Return an enhanced uint8 image with the same shape as normalized.
-
-    normalized is the 64x512 unwrapped grayscale iris. background_block is
-    the side length for illumination averaging; histogram_block is the side
-    length for local equalization, both in pixels. Input dimensions should be
-    multiples of background_block. Output intensities are in the range 0..255.
+    """Correct lighting and enhance local contrast, returning a uint8 iris image.
+    Paper section 3.2.3
     """
-    # 1. Work in floating point so subtracting brightness can produce negatives.
+    #the function takes the 64x512 normalized iris image, corrects uneven lighting, and improves local contrast like the paper describes 
+    
+    # convert the image to floating point since the next operation needs to subtract estimated background brightness
     image = normalized.astype(np.float32)
     height, width = image.shape
 
-    # 2. Average each 16x16 block to estimate the local background brightness.
-    # A 64x512 image produces a small 4x32 grid, with one mean per block.
-    background = np.zeros(
-        (height // background_block, width // background_block), dtype=np.float32
-    )
+    # estimate background brightness using 16x16 blocks
+    background = np.zeros((height // background_block, width // background_block), dtype=np.float32)
+    #it creates a gird of 4 blocks and 32 block columns
+
+    # the loops fill each grid cell with the corresponding image block's average brightness
     for row in range(background.shape[0]):
         for col in range(background.shape[1]):
-            y, x = row * background_block, col * background_block
+            #here col and row identify a block and they locate that block in the original image
+            y = row * background_block
+            x = col * background_block
             block = image[y:y + background_block, x:x + background_block]
+
+            #averaging reduces fine texture, giving a rough estimate of broad lighting differences.
             background[row, col] = block.mean()
 
-    # 3. Expand the background estimate and subtract it from the iris image.
-    # resize takes (width, height); INTER_CUBIC uses bicubic interpolation.
+    # each entry in background summarizes a whole 16 × 16 region.
+    # to subtract an estimated background value at every pixel, we first expand this small grid to the image’s dimensions:
     illumination = cv2.resize(background, (width, height), interpolation=cv2.INTER_CUBIC)
     corrected = image - illumination
 
-    # 4. Convert the corrected intensities to the uint8 format equalizeHist needs.
-    # We choose min-max scaling over the whole image: minimum -> 0, maximum -> 255.
-    # This is our conversion choice; the paper does not specify the quantization.
-    corrected = cv2.normalize(
-        corrected, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U
-    )
 
-    # 5. Equalize each 32x32 block independently to bring out local texture.
-    # The loops visit nonoverlapping blocks and write them to the same positions.
+    # after subtraction, the values might occupy a range such as -20 to 30
+    # so we rescale that range and convert the datatype
+    # for the input of the function: corrected is the input image
+    # None lee openCV allocate the output array
+    # 0,255 is the desired min and max
+    # Norm_minmax is what uses the min-max scaling
+    # CV_8U is the desired output type, which is 8-bit unsigned integer
+    corrected = cv2.normalize(corrected, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+    # then we qualize each 32x32 block independently to bring out local texture.
     enhanced = np.zeros_like(corrected)
+    # the loops visit nonoverlapping blocks and write them to the same positions.
     for y in range(0, height, histogram_block):
         for x in range(0, width, histogram_block):
             block = corrected[y:y + histogram_block, x:x + histogram_block]
