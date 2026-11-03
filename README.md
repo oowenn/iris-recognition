@@ -33,34 +33,36 @@ Extract the archive beside the scripts. Expected layout: `CASIA Iris Image Datab
 
 Source: `GroupProject.pdf`. Its figure references conflict: the experiment slide mentions Tables 3/10, Table 4, and Fig. 13; the submission slide mentions Table 3/Fig. 10 and Table 4/Fig. 11. Confirm the intended paper references before finalizing outputs.
 
-## Suggested work split
+## Parallel work split
 
-This is a proposal to agree on together, not a statement of completed contributions.
+| Owner | Work | Handoff |
+| --- | --- | --- |
+| Owen | Localization, normalization, enhancement, main orchestration | Enhanced arrays via `HANDOFF.md` |
+| Sean | Features, Fisher model, matching, evaluation | Features, model, score tables, plots |
+| Both | Parameter decisions, cross-review, results and submission | `PROJECT_PLAN.md` |
 
-| Work | Proposed lead | Reviewer | Status |
-| --- | --- | --- | --- |
-| Localization, normalization, enhancement | Owen | Sean | Not started |
-| Features, Fisher projection, matching | Sean | Owen | Not started |
-| Integration and evaluation | Both | Both | Scaffold only |
-| Documentation, peer evaluation, packaging | Both | Both | Not started |
+Sean can start immediately using `python make_demo_handoff.py`. This generates
+an explicitly synthetic shape fixture, not recognition data. Owen replaces it
+with the real preprocessing cache when ready. See `HANDOFF.md` for the exact
+schema and `PROJECT_PLAN.md` for independent checklists and integration steps.
 
-Track decisions and actual contributions in `PROJECT_PLAN.md`.
+## Design contracts
 
-## Module interfaces
+`PipelineConfig.py` centralizes shapes, block sizes, filter envelopes, rotation
+angles, feature length, and unresolved choices. Module docstrings now specify
+the paper-based operations and interfaces. `DesignChoices` leaves undocumented
+filter frequencies and numerical choices unset rather than inventing defaults.
 
-Images use `[row, column]` indexing. Circle centers use `(x, y)` = `(column, row)` in original pixels. Feature matrices use `(n_images, n_features)`, labels `(n_images,)`.
+Train features: `(324,7,1536)`; zero-angle test features: `(432,1536)`.
+Seven rotated class centers are built from training only. Matching uses L1,
+squared L2 (equation 8), and cosine distance, minimizing across rotation centers.
+Standard 108-class Fisher LDA permits at most 107 discriminant directions;
+using 200 as in the paper is not feasible here. Document the rank-aware solver.
 
-| Module | Contract |
-| --- | --- |
-| IrisRecognition.py | Main orchestration and dataset checks |
-| IrisLocalization.py | Grayscale image → pupil and iris circles |
-| IrisNormalization.py | Image and circles → polar iris array |
-| ImageEnhancement.py | Normalized iris → enhanced iris |
-| FeatureExtraction.py | Enhanced iris → fixed-length feature vector |
-| IrisMatching.py | Train features/labels → Fisher model and class centers; queries → distances |
-| PerformanceEvaluation.py | Labels and distances → CRRs and verification ROC/table |
-
-Choose exact dimensions, filters, rotation handling, and score definitions after reading the paper; these are intentionally not guessed. Fit all learned transforms and class centers on training images only. Keep the test set out of parameter selection.
+The scaffold remains unimplemented for recognition. Paper reference:
+[Ma et al. (2003)](https://www.cse.msu.edu/~rossarun/BiometricsTextBook/Papers/Iris/Ma_IrisTexture_PAMI03.pdf),
+sections 3.2–3.4. Team choices about Fisher fitting and verification comparisons
+are explicitly separated from paper constants in `PROJECT_PLAN.md`.
 
 ## Dataset and submission notes
 

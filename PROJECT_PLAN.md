@@ -1,53 +1,91 @@
-# Shared project plan
+# Parallel work plan
 
-## Team
+Proposed ownership for Owen and Sean. Swap names if preferred; keep the boundary fixed.
 
-| Member | UNI | Agreed responsibilities |
+| Owner | Files | Deliverable |
 | --- | --- | --- |
-| Owen | TODO | Confirm proposed README split |
-| Sean | TODO | Confirm proposed README split |
+| Owen: preprocessing | IrisLocalization.py, IrisNormalization.py, ImageEnhancement.py | Correct circles, 64x512 normalized/enhanced arrays, cached handoff |
+| Sean: recognition/evaluation | FeatureExtraction.py, IrisMatching.py, PerformanceEvaluation.py | 1536 features, Fisher model, three CRRs, verification table/curve |
+| Owen: integration lead | IrisRecognition.py | Load data, call stages, cache, run end to end |
+| Both | PipelineConfig.py, README.md, SUBMISSION_README.template | Agree choices before changing contracts; document and review |
 
-## Integration checklist
+## Handoff that enables parallel work
 
-- [ ] Read paper and resolve conflicting figure references.
-- [ ] Validate dataset and inspect images from both sessions.
-- [ ] Agree on normalized image shape and boundary conventions.
-- [ ] Inspect localization overlays and normalized/enhanced images across eyes.
-- [ ] Freeze paper-based filter parameters and feature ordering.
-- [ ] Fit Fisher projection and class centers on 324 training images only.
-- [ ] Evaluate all 432 test images with all three metrics.
-- [ ] Produce CRR and verification table/ROC; investigate failures.
-- [ ] Complete documentation, contribution form/signatures, clean run, and packaging.
+Owen exports `outputs/preprocessed.npz` following `HANDOFF.md`. Sean starts with
+`python make_demo_handoff.py` while Owen implements preprocessing. This synthetic
+fixture validates shapes/interfaces only; it is not iris data and must never be
+used for reported recognition performance. Sean owns feature extraction, so Owen
+does not need to wait for filters or Fisher implementation.
 
-## Paper decisions
+Stage order: raw image -> circles -> normalized at angle -> enhancement -> handoff
+-> crop/filter/statistics -> features -> training-only Fisher -> rotated centers
+-> distances -> CRR and FMR/FNMR.
 
-Record equations, page/section references, parameter values, and reasons for deviations.
+## Before working separately (joint, short interface meeting)
 
-| Component | Paper reference | Chosen implementation/parameters |
-| --- | --- | --- |
-| Pupil/iris localization | TODO | TODO; alternative method permitted |
-| Normalization grid/interpolation | TODO | TODO |
-| Enhancement/illumination correction | TODO | TODO |
-| Filter family, scales, parameters | TODO | TODO |
-| Local statistics/feature ordering | TODO | TODO |
-| Rotation compensation | TODO | TODO |
-| Fisher rank/numerical handling | TODO | TODO |
-| Class centers and metric formulas | TODO | TODO |
-| Verification comparisons/operating points | TODO | TODO |
+- [ ] Fill UNIs: Owen TODO, Sean TODO; confirm ownership.
+- [ ] Read paper sections 3.2-3.4; review constants and HANDOFF.md together.
+- [ ] Choose filter frequencies, support, padding, interpolation, and Fisher solver.
+- [ ] Confirm positive rotation direction, feature order, and score definitions.
+- [ ] Document Fisher fitting/rotation convention and verification comparisons.
+- [ ] Confirm conflicting assignment figure references/expected operating points.
+
+## Owen's independent checklist
+
+- [ ] Projection-profile pupil estimate; 120x120 histogram refinement twice.
+- [ ] Canny/Hough boundary estimation; separate pupil and iris centers.
+- [ ] Paper normalization with initial-angle support; verify coordinate direction.
+- [ ] 16x16 background means, bicubic expansion, subtraction, 32x32 equalization.
+- [ ] Review overlays/strips on training images, including difficult cases.
+- [ ] Export actual training rotations and zero-angle test strips plus provenance.
+- [ ] Complete orchestration and dataset/path/error handling.
+
+## Sean's independent checklist
+
+- [ ] Build custom radial-cosine filters; keep unresolved values explicit.
+- [ ] Extract channel/block-ordered mean and mean absolute deviation features.
+- [ ] Implement rank-aware Fisher solver; at most 107 directions on 108 classes.
+- [ ] Average projected training features per class/angle for seven templates.
+- [ ] Score L1, squared L2, cosine; minimize across seven templates per class.
+- [ ] Implement CRR, genuine/impostor comparisons, threshold sweep, and outputs.
+- [ ] Exercise extraction/matching on synthetic fixture; report no real accuracy yet.
+
+## Integration and final review (both)
+
+- [ ] Replace synthetic fixture with real preprocessing cache; verify labels/order.
+- [ ] Fit using session 1 only; freeze parameters before final session 2 evaluation.
+- [ ] Run all 432 test images; report failures explicitly, do not remove them.
+- [ ] Inspect low-scoring examples together; separate algorithm bugs from limitations.
+- [ ] Produce all three CRRs, dimension sweep if required, verification table/curve.
+- [ ] Cross-review each other's logic and all key parameters.
+- [ ] Complete README, actual contribution record, and signed peer evaluation.
+- [ ] Clean-environment run; package without data; submit November 9, 11:59 PM.
+
+## Decisions requiring explicit documentation
+
+| Choice | Current state / rationale |
+| --- | --- |
+| Filter cosine frequencies, kernel support/padding | Unresolved; do not invent paper values |
+| Normalization interpolation / clipping | Unresolved; record implementation |
+| Enhancement quantization | Unresolved; shared output convention float64 0..255 |
+| Fisher output size | Up to 107; effective rank may lower it; 200 is infeasible for standard 108-class LDA |
+| Fisher solver | Unresolved; singular raw scatter requires rank-aware handling |
+| Rotation/Fisher fitting | Team proposal: fit zero-angle vectors; project/average each training rotation |
+| Verification comparison unit | Team proposal: query vs enrolled class's rotation-minimized center score |
+| Output references | Assignment figure numbering inconsistent; confirm |
 
 ## Experiment log
 
-No results yet. Record configuration and code revision for each run. Do not tune on the test set.
+No recognition results yet. Record revision, parameters, fitted dimension, failure
+counts, and all three CRRs. Never present synthetic fixture scores as results.
 
-| Date/revision | Configuration | L1 CRR | L2 CRR | Cosine CRR | Notes |
+| Revision | Configuration / dimension | L1 CRR | L2 CRR | Cosine CRR | Failures |
 | --- | --- | --- | --- | --- | --- |
-| TODO | TODO | Pending | Pending | Pending | TODO |
+| TODO | TODO | Pending | Pending | Pending | Pending |
 
 ## Actual contributions
 
-Use this record to complete the supplied evaluation form. Both members sign the final form.
-
-| Member | Completed work | Review/integration |
+| Member / UNI | Completed work | Review and integration |
 | --- | --- | --- |
-| Owen | TODO | TODO |
-| Sean | TODO | TODO |
+| Owen / TODO | TODO | TODO |
+| Sean / TODO | TODO | TODO |

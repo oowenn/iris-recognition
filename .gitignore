@@ -1,6 +1,6 @@
 datasets/*
 PeerEvaluationForm/*
-GroupProject.pdf
+*.pdf
 
 .venv/
 __pycache__/

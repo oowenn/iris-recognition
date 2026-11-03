@@ -41,11 +41,15 @@ def check_dataset(data_root):
 
 
 def run_pipeline(session_paths):
-    """TODO: load grayscale images, preprocess, extract, train, score, evaluate.
+    """Owen owns orchestration; see HANDOFF.md for the shared array schema.
 
-    session_paths[1] is training; session_paths[2] is testing. Parse eye labels
-    from filenames. Call the six stage modules and fit only on training data.
-    Save three CRRs and verification table/ROC. Explain all key parameters.
+    TODO: load images as float64 grayscale and parse labels. For each training
+    image, localize once, normalize/enhance at all seven ROTATION_ANGLES. For
+    test images, normalize/enhance at zero angle only. Cache provenance and
+    synthetic=False. Call Sean's feature extractor with explicit DesignChoices.
+    Fit zero-angle Fisher on training, build seven class centers, score all three
+    metrics, and save CRR plus verification tables/curves. Reject synthetic caches
+    before reporting results. Never fit or select parameters using test data.
     """
     raise NotImplementedError("Scaffold only: implement modules and pipeline orchestration")
 

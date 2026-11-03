@@ -19,7 +19,10 @@ Explain any permitted localization deviation.
 3. Experimental protocol
 Training: session 1, 324 images from 108 eyes.
 Testing: session 2, 432 images from the same 108 eyes.
-TODO: explain training-only fitting, verification comparisons, and thresholds.
+TODO: explain training-only Fisher fitting (at most 107 directions), numerical
+solver, seven rotation centers, verification comparisons, and thresholds.
+Record filter frequencies, support, padding, interpolation, and all departures
+from the published design. See PipelineConfig.py and PROJECT_PLAN.md.
 
 4. Results
 L1 CRR: TODO
