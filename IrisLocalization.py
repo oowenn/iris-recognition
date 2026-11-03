@@ -5,6 +5,7 @@ import numpy as np
 def iris_localization(image, window_size=120):
     """
     Returns pupil, iris as two (center_x, center_y, radius) tuples in pixels.
+    Ma et al., 2003 (3.2.1)
     """
     # Gaussian blur to reduce noise and help iris detection
     smooth = cv2.GaussianBlur(image, (5, 5), 0)
@@ -24,9 +25,7 @@ def iris_localization(image, window_size=120):
         window = image[y0:y0 + window_size, x0:x0 + window_size]
         
         # separate the pupil by masking the darkest pixels in the window 
-        _, mask = cv2.threshold(
-            window, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU
-        )
+        _, mask = cv2.threshold(window, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
 
         # connect components to find the largest dark region, which should be the pupil
         _, _, stats, centroids = cv2.connectedComponentsWithStats(mask)
@@ -39,10 +38,7 @@ def iris_localization(image, window_size=120):
     pupil = (float(pupil_x), float(pupil_y), float(pupil_radius)) # cast numpy values to float
 
     # find other circles in the image
-    circles = cv2.HoughCircles(
-        smooth, cv2.HOUGH_GRADIENT, dp=1, minDist=20,
-        param1=50, param2=15, minRadius=80, maxRadius=130,
-    )
+    circles = cv2.HoughCircles(smooth, cv2.HOUGH_GRADIENT, dp=1, minDist=20,param1=50, param2=15, minRadius=80, maxRadius=130)
 
     # if no circles are found, use a default iris radius of 105 pixels
     if circles is None:
