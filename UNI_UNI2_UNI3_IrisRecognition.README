@@ -2,8 +2,8 @@ Iris recognition - minimal project scaffold
 
 Status
 The seven Python files follow GroupProject.pdf. Dataset discovery, pipeline
-wiring, iris localization, and normalization are implemented; the remaining
-stages are TODOs.
+wiring, iris localization, normalization, and image enhancement are implemented.
+Feature extraction, matching, and evaluation are still TODOs.
 The main script currently prints the session split. Calling run_experiment()
 will reach an explicit NotImplementedError until the algorithm bodies are filled
 in. This is a starting scaffold, not a completed submission or measured model.
@@ -11,9 +11,13 @@ in. This is a starting scaffold, not a completed submission or measured model.
 Run from this directory
     .venv/bin/python IrisRecognition.py
 
-To visually compare localized eyes with normalized iris strips:
-    .venv/bin/python normalization_verify.py
-The verification script prints output shapes and displays three training images.
+Visual verification scripts are in verify/:
+    .venv/bin/python verify/localization_verify.py
+    .venv/bin/python verify/normalization_verify.py
+    .venv/bin/python verify/enhancement_verify.py
+They show detected circles, normalized strips, and before/after enhancement.
+Normalization and enhancement also print output shapes and datatypes. Each
+script finds the dataset and project modules relative to its own location.
 
 Packages
     numpy           -> import numpy as np
@@ -42,9 +46,10 @@ array operations; it does not mean writing every pixel operation as a Python loo
 - IrisNormalization: NumPy builds the source-coordinate grids from both
   circles using equation 2; cv2.remap performs bilinear interpolation. The
   output is float32 with the original intensity scale, normally 0..255.
-- ImageEnhancement: write the 16x16 averaging and illumination subtraction.
-  Use cv2.resize with INTER_CUBIC, then cv2.equalizeHist per 32x32 block.
-  Document the float-to-uint8 mapping. CLAHE changes the stated method.
+- ImageEnhancement: NumPy handles the 16x16 block means and subtraction.
+  cv2.resize uses INTER_CUBIC to expand the illumination estimate. cv2.normalize
+  maps the corrected image's minimum/maximum to 0/255 as uint8, followed by
+  cv2.equalizeHist on each 32x32 block. This uses ordinary local equalization.
 - FeatureExtraction: write the paper's kernel formula, ROI selection, 8x8
   block statistics, and feature ordering. Let cv2.filter2D apply each custom
   kernel in floating point. Ordinary getGaborKernel uses a different carrier.
@@ -87,7 +92,10 @@ Design and implementation order
    Uses Y/rows for radial sampling and replicates border pixels when a circle
    extends beyond the image. This simple version does not mask eyelids.
 3. ImageEnhancement.py: subtract illumination estimated from 16x16 block
-   means and bicubic interpolation, then equalize each 32x32 region.
+   means and bicubic interpolation, then equalize each 32x32 region. Five
+   numbered steps explain the implementation. Output is 64x512 uint8; global
+   min-max scaling before equalization is our float-to-uint8 conversion choice.
+   Independent block equalization can leave visible seams between blocks.
 4. FeatureExtraction.py: filter the first 48 rows using the two circularly
    modulated kernels. Each 8x8 block contributes a mean magnitude and mean
    absolute deviation, for 1536 features total (equations 3-6).

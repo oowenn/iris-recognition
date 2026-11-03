@@ -31,7 +31,7 @@ def iris_normalization(image, pupil, iris, rows=64, cols=512, angle_deg=0):
     # radial is a column vector, so each radial fraction pairs with every angle.
     # Use Y/rows: the first row is at the pupil, the last just inside the iris.
     radial = np.arange(rows)[:, None] / rows
-    map_x = (inner_x + radial * (outer_x - inner_x)).astype(np.float32)
+    map_x = (inner_x + radial*(outer_x - inner_x)).astype(np.float32)
     map_y = (inner_y + radial * (outer_y - inner_y)).astype(np.float32)
 
     # 5. Sample those coordinates using OpenCV's bilinear interpolation.

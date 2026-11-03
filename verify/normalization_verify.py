@@ -1,15 +1,20 @@
 """Visually compare localized eyes with their normalized iris strips."""
 
 from pathlib import Path
+import sys
 import cv2
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
+
+# Find the project modules and dataset from this script's location.
+project_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(project_root))
 from IrisLocalization import iris_localization
 from IrisNormalization import iris_normalization
 
 # 1. Choose training images and the starting angle for normalization.
 # Change eyes to inspect other subjects, or angle_deg to rotate the strip.
-root = Path(__file__).resolve().parent / "CASIA Iris Image Database (version 1.0)"
+root = project_root / "CASIA Iris Image Database (version 1.0)"
 eyes = ["001", "018", "063"]
 angle_deg = 0
 fig, axes = plt.subplots(len(eyes), 2, figsize=(12, 8), squeeze=False)
