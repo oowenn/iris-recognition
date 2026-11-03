@@ -1,0 +1,74 @@
+Iris recognition - minimal project scaffold
+
+Status
+The seven Python files follow GroupProject.pdf. Dataset discovery and pipeline
+wiring are implemented; the recognition and evaluation algorithms are TODOs.
+The main script currently prints the session split. Calling run_experiment()
+will reach an explicit NotImplementedError until the algorithm bodies are filled
+in. This is a starting scaffold, not a completed submission or measured model.
+
+Run from this directory
+    .venv/bin/python IrisRecognition.py
+
+The existing environment has NumPy and OpenCV for the starter. For a new
+environment, install numpy and opencv-python. SciPy/scikit-learn and matplotlib
+can be used when implementing Fisher reduction and plotting.
+
+Dataset layout
+    CASIA Iris Image Database (version 1.0)/001/1/*.bmp
+    CASIA Iris Image Database (version 1.0)/001/2/*.bmp
+    ... through eye 108
+Use all three session-1 images per eye for training (324 images) and all four
+session-2 images for testing (432 images). Keep this split fixed.
+
+Design and implementation order
+1. IrisLocalization.py: grayscale image -> pupil and iris (x, y, radius).
+   Start with section 3.2.1: coarse pupil estimate, local thresholding, then
+   Canny/Hough refinement. The assignment permits alternative localization.
+2. IrisNormalization.py: image and circles -> 64x512 unwrapped image.
+   Follow equation 2, with radial rows and counterclockwise angular columns.
+3. ImageEnhancement.py: subtract illumination estimated from 16x16 block
+   means and bicubic interpolation, then equalize each 32x32 region.
+4. FeatureExtraction.py: filter the first 48 rows using the two circularly
+   modulated kernels. Each 8x8 block contributes a mean magnitude and mean
+   absolute deviation, for 1536 features total (equations 3-6).
+5. IrisMatching.py: fit Fisher reduction on session 1, calculate one mean
+   template per eye per angle, and match by L1, L2, and cosine distance.
+   Take the minimum across angles -9, -6, -3, 0, 3, 6, 9 degrees.
+6. PerformanceEvaluation.py: use the matching functions for CRR tables,
+   dimension-versus-CRR plotting, threshold tables, and verification ROC.
+7. IrisRecognition.py: the pipeline is already connected in run_experiment().
+   Replace main's split preview with that call after implementing the stages.
+
+Each function documents its inputs, outputs, key parameters, and intended loops.
+Keep those explanations updated as the TODOs become code.
+
+Paper details to preserve
+- Ma et al. (2003), sections 3.2-3.4 and 4.3, are the implementation references.
+- The two Gaussian (sigma_x, sigma_y) pairs are (3, 1.5) and (4.5, 1.5).
+  Numeric carrier frequencies and finite kernel sizes are not specified in
+  the paper; choose and document them when implementing FeatureExtraction.
+- Fisher reduction has at most classes - 1 directions: 107 for CASIA-IrisV1.
+  The paper's 200-dimensional setting used a larger database.
+- Equation 8 prints squared Euclidean distance for L2. Use it consistently;
+  cosine matching uses 1 - cosine similarity so smaller scores are better.
+- Table 3 compares original and reduced features. Figure 10 plots CRR against
+  dimension. Table 4 reports thresholds, FMR, and FNMR. Figures 11/13 show ROC
+  with FMR on the x-axis and FNMR on the y-axis. The assignment's reference
+  numbers vary between slides; there is no Table 10 in the supplied paper.
+- Image quality selection, bootstrap, and confidence intervals are outside
+  the assigned implementation scope.
+
+Limitations and improvement discussion to complete
+No accuracy has been measured. The final target is >=80% CRR for each distance
+measure. After implementing the pipeline, discuss observed effects of boundary
+localization, eyelid/eyelash occlusion, and pupil deformation, and explain
+improvements supported by your own results.
+
+Submission details to complete
+Replace UNI_UNI2_UNI3 in this filename with the team members' actual UNIs.
+Complete the peer evaluation form with each member's contributions and actual
+signatures, and include it with the final submission. Update this README with
+the implemented design, run instructions, results, and limitations. Submit the
+required files as UNI_UNI2_UNI3_IrisRecognition.zip/.rar, excluding the dataset.
+The assignment lists November 9, 2026, at 11:59 PM as the deadline.

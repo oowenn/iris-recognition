@@ -1,79 +1,69 @@
-"""Main entry point. Dataset checks work; recognition remains to be implemented."""
-import argparse
+"""Load the session split and connect the required iris recognition stages."""
+
 from pathlib import Path
-import struct
+
+import cv2
+import numpy as np
+
+from IrisLocalization import iris_localization
+from IrisNormalization import iris_normalization
+from ImageEnhancement import image_enhancement
+from FeatureExtraction import feature_extraction
+from PerformanceEvaluation import performance_evaluation
 
 
-def check_dataset(data_root):
-    """Validate fixed session split and 320x280 BMP headers without dependencies.
+# Dataset stays beside the scripts. Session 1 trains; session 2 tests.
+DATA_DIR = Path(__file__).resolve().parent / "CASIA Iris Image Database (version 1.0)"
+# Initial unwrapping angles, in degrees, for the seven enrolled templates.
+ROTATION_ANGLES = (-9, -6, -3, 0, 3, 6, 9)
 
-    expected maps each session to its required relative filenames. Ignore
-    non-BMP metadata, but reject missing, extra, or misplaced BMPs.
+
+def load_dataset(data_dir=DATA_DIR):
+    """Return train/test lists of (BMP path, eye ID), e.g. (path, '001')."""
+    # Folder layout is eye_id/session/image.bmp; no random split is used.
+    train = [(p, p.parent.parent.name) for p in sorted(data_dir.glob("*/1/*.bmp"))]
+    test = [(p, p.parent.parent.name) for p in sorted(data_dir.glob("*/2/*.bmp"))]
+    return train, test
+
+
+def extract_features(samples, angles):
+    """Return features (images, angles, 1536) and one eye label per image.
+
+    samples is a list from load_dataset; angles contains starting angles in
+    degrees. Each image is localized once, then processed at each angle.
     """
-    expected = {
-        session: {
-            Path(f"{eye:03d}/{session}/{eye:03d}_{session}_{index}.bmp")
-            for eye in range(1, 109)
-            for index in range(1, count + 1)
-        }
-        for session, count in ((1, 3), (2, 4))
-    }
-    if not data_root.is_dir():
-        raise ValueError(f"Dataset folder not found: {data_root}. Extract the RAR first.")
-    actual = {p.relative_to(data_root) for p in data_root.rglob("*")
-              if p.is_file() and p.suffix.lower() == ".bmp"}
-    missing = (expected[1] | expected[2]) - actual
-    extra = actual - (expected[1] | expected[2])
-    if missing or extra:
-        raise ValueError(f"Layout mismatch: {len(missing)} missing, {len(extra)} extra BMPs. "
-                         f"Examples: missing={list(map(str, sorted(missing)[:3]))}, "
-                         f"extra={list(map(str, sorted(extra)[:3]))}")
-    for relative in sorted(actual):
-        with (data_root / relative).open("rb") as stream:
-            header = stream.read(26)
-        if len(header) != 26 or header[:2] != b"BM":
-            raise ValueError(f"Invalid BMP header: {relative}")
-        width, height = struct.unpack_from("<ii", header, 18)
-        if (width, abs(height)) != (320, 280):
-            raise ValueError(f"Unexpected size: {relative}: {width}x{height}")
-    return {session: [data_root / p for p in sorted(paths)]
-            for session, paths in expected.items()}
+    features, labels = [], []
+    for path, label in samples:
+        image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        pupil, iris = iris_localization(image)
+        templates = []
+        for angle in angles:
+            normalized = iris_normalization(image, pupil, iris, angle_deg=angle)
+            enhanced = image_enhancement(normalized)
+            templates.append(feature_extraction(enhanced))
+        features.append(templates)
+        labels.append(label)
+    return np.asarray(features), np.asarray(labels)
 
 
-def run_pipeline(session_paths):
-    """Owen owns orchestration; see HANDOFF.md for the shared array schema.
-
-    TODO: load images as float64 grayscale and parse labels. For each training
-    image, localize once, normalize/enhance at all seven ROTATION_ANGLES. For
-    test images, normalize/enhance at zero angle only. Cache provenance and
-    synthetic=False. Call Sean's feature extractor with explicit DesignChoices.
-    Fit zero-angle Fisher on training, build seven class centers, score all three
-    metrics, and save CRR plus verification tables/curves. Reject synthetic caches
-    before reporting results. Never fit or select parameters using test data.
-    """
-    raise NotImplementedError("Scaffold only: implement modules and pipeline orchestration")
+def run_experiment(data_dir=DATA_DIR):
+    """Pipeline wiring for use after the algorithm TODOs are implemented."""
+    train, test = load_dataset(data_dir)
+    train_features, train_labels = extract_features(train, ROTATION_ANGLES)
+    test_features, test_labels = extract_features(test, (0,))
+    # The matcher compares each unrotated test feature to seven class centers.
+    return performance_evaluation(
+        train_features, train_labels, test_features[:, 0, :], test_labels
+    )
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-root", type=Path,
-                        default=Path(__file__).resolve().parent /
-                        "CASIA Iris Image Database (version 1.0)",
-                        help="Extracted database containing eye directories 001–108")
-    parser.add_argument("--check-data", action="store_true",
-                        help="Validate structure and BMP dimensions, then exit")
-    args = parser.parse_args()
-    try:
-        sessions = check_dataset(args.data_root)
-    except (ValueError, OSError) as error:
-        parser.exit(1, f"{error}\n")
-    print(f"Dataset valid: {len(sessions[1])} training images, "
-          f"{len(sessions[2])} test images, 108 eyes.")
-    if not args.check_data:
-        try:
-            run_pipeline(sessions)
-        except NotImplementedError as error:
-            parser.exit(1, f"{error}\n")
+    """Show the available split while the recognition stages are being built."""
+    train, test = load_dataset()
+    print(f"Session 1: {len(train)} training images")
+    print(f"Session 2: {len(test)} testing images")
+    print("Scaffold ready. Implement the TODOs before calling run_experiment().")
+    # TODO: replace the preview above with run_experiment() when ready.
 
 
 if __name__ == "__main__":

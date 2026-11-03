@@ -7,4 +7,6 @@ __pycache__/
 *.pyc
 .DS_Store
 CASIA Iris Image Database*/
+CASIA Iris Image Database*.rar
+CASIA Iris Image Database*.zip
 outputs/

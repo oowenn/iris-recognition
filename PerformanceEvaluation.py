@@ -1,26 +1,32 @@
-"""Paper identification and verification outputs; no bootstrap required."""
+"""Prepare identification and verification results (section 4.3)."""
+
+from IrisMatching import fit_matcher, iris_matching
 
 
-def evaluate_identification(test_labels, distances, class_labels):
-    """Return CRR and minimum-distance predictions for each of three metrics.
+def performance_evaluation(
+    train_features, train_labels, test_features, test_labels,
+    dimensions=(20, 40, 60, 80, 100, 107),
+):
+    """Return a dictionary of result tables and figures once implemented.
 
-    Inputs: labels (432,), distances (432,108), sorted class_labels (108,).
-    CRR = number correct / 432; target >=0.80 for each metric. TODO: implement,
-    document ties, and include every test image; never silently discard failures.
+    train_features: (324, 7, 1536) session-1 features and rotation templates.
+    train_labels: (324,) eye IDs; test_features: (432, 1536) session-2 features;
+    test_labels: (432,) true eye IDs. dimensions lists Fisher dimensions for
+    the Figure 10 curve; its last value is used for the reduced-feature table.
     """
-    raise NotImplementedError("Implement identification evaluation")
-
-
-def evaluate_verification(test_labels, distances, class_labels):
-    """Return FMR/FNMR threshold curve and selected operating points.
-
-    Team protocol: each test image claims each enrolled class, after rotation
-    minimization. Genuine mask: test_label == class_label (432 genuine claims;
-    432*107 = 46224 impostor claims). Confirm this interpretation with instructor.
-    Accept if distance <= threshold. FMR = accepted impostors / impostors;
-    FNMR = rejected genuine / genuine. Sweep all scores and endpoint thresholds.
-    Plot x=FMR, y=FNMR as in paper, labeling percentages/log axes explicitly.
-    TODO: implement table operating-point selection and save outputs. Do not copy
-    paper thresholds as calibrated thresholds for this smaller dataset.
-    """
-    raise NotImplementedError("Implement verification curve and operating points")
+    # TODO: call fit_matcher with n_components=None and dimensions[-1].
+    #       For each model, call iris_matching with L1, L2, and cosine.
+    # TODO: Table 3: predict classes[distances.argmin(axis=1)] and calculate
+    #       CRR = 100 * mean(predicted_labels == test_labels), for both models.
+    #       Assignment target: at least 80% CRR for all three measures.
+    # TODO: Figure 10: repeat Fisher fitting/matching for each dimension,
+    #       plotting cosine CRR against dimension. Fit on training data only.
+    # TODO: for verification, label each test-to-class score as genuine when
+    #       test_labels[row] == classes[column], otherwise as an impostor.
+    # TODO: sweep distance thresholds; accept scores <= threshold.
+    #       FMR = accepted impostor claims / all impostor claims.
+    #       FNMR = rejected genuine claims / all genuine claims.
+    # TODO: Table 4: report thresholds with FMR and FNMR percentages.
+    #       Plot FNMR (%) against FMR (%) for the ROC (Figures 11/13).
+    # Bootstrap and confidence intervals are not required for this project.
+    raise NotImplementedError("TODO: implement CRR tables and ROC plots")

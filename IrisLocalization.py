@@ -1,22 +1,15 @@
-"""Locate pupil and outer iris boundaries; document method and parameters."""
-from dataclasses import dataclass
+"""Locate the pupil and outer iris boundary (Ma et al., section 3.2.1)."""
 
 
-@dataclass(frozen=True)
-class Circle:
-    """Center x/y and radius in original image pixels."""
-    x: float
-    y: float
-    radius: float
+def iris_localization(image, window_size=120):
+    """Return pupil, iris as two (center_x, center_y, radius) tuples in pixels.
 
-
-def localize_iris(image):
-    """Return (pupil_circle, iris_circle) for a 2D grayscale image.
-
-    Paper baseline: projection-profile minima, histogram threshold/centroid in
-    a 120x120 neighborhood (repeat twice), then Canny edges and circular Hough
-    in a restricted search region. Circles need not be concentric.
-    TODO: explain thresholds, search ranges, loops, and failure handling.
-    Validate overlays across multiple eyes before downstream integration.
+    image is a grayscale (height, width) array. x is the column coordinate;
+    y is the row coordinate. window_size is the side of the pupil search area.
+    The two circles can have different centers.
     """
-    raise NotImplementedError("Implement pupil and outer iris localization")
+    # TODO: estimate the pupil center from row/column intensity minima.
+    # TODO: threshold the local window and refine its centroid twice.
+    # TODO: use Canny edges and a circle Hough transform to refine both circles.
+    # The assignment also permits a different localization method.
+    raise NotImplementedError("TODO: implement iris localization")

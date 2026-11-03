@@ -1,14 +1,15 @@
-"""Paper section 3.2.3: illumination subtraction and local equalization."""
-from PipelineConfig import ILLUMINATION_BLOCK, EQUALIZATION_BLOCK
+"""Correct illumination and improve local contrast (section 3.2.3)."""
 
 
-def enhance_image(normalized_iris):
-    """Return float64 (64, 512), with a documented fixed 0..255 output scale.
+def image_enhancement(normalized, background_block=16, histogram_block=32):
+    """Return an enhanced grayscale array with the same shape as normalized.
 
-    Compute nonoverlapping 16x16 means, bicubically expand the 4x32 background
-    grid to 64x512, subtract in floating point, then equalize each 32x32 region.
-    TODO: implement; document histogram quantization, range conversion, clipping,
-    and interpolation edges. Do not silently substitute CLAHE or uint8 subtraction.
-    Output range is a team interface convention, not an extra paper parameter.
+    normalized is the 64x512 unwrapped iris. background_block is the side
+    length in pixels for illumination averaging; histogram_block is the side
+    length for local histogram equalization. Output intensities span 0..255.
     """
-    raise NotImplementedError("Implement background correction and local equalization")
+    # TODO: average each nonoverlapping 16x16 block to estimate illumination.
+    # TODO: expand that grid using bicubic interpolation and subtract it
+    #       from the normalized image in floating point.
+    # TODO: equalize the corrected image in each 32x32 region.
+    raise NotImplementedError("TODO: implement image enhancement")
