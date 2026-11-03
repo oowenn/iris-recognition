@@ -1,5 +1,8 @@
 """Evaluate identification and verification results (section 4.3)."""
 
+import csv
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve
@@ -10,7 +13,7 @@ def performance_evaluation(
     train_features, train_labels, test_features, test_labels,
     dimensions=(20, 40, 60, 80, 100, 107),
 ):
-    """Print the result tables, display two plots, and return the results.
+    """Save the tables and plots in figures/, display them, and return results.
 
     train_features: (324, 7, 1536) session-1 features and rotation templates.
     train_labels: (324,) eye IDs; test_features: (432, 1536) session-2 features;
@@ -21,6 +24,8 @@ def performance_evaluation(
 
     Returns CRR tables, dimensions and cosine CRRs, a threshold table, ROC
     arrays, and the two matplotlib figures. All rates are percentages.
+    Tables are saved as CSV and plots as PNG beside this script in figures/.
+    Running again replaces the four output files.
     """
     # 1. Match the original features without Fisher dimension reduction.
     # Each distance matrix has one row per test image and one column per eye.
@@ -98,8 +103,7 @@ def performance_evaluation(
         print(f"{target_fmr:>14.1f} {threshold:>14.6f} "
               f"{fmr[index]:>12.3f} {fnmr[index]:>12.3f}")
 
-    # 7. Plot the verification ROC with the paper's FMR/FNMR axes, then return
-    # the tables and curves so they can also be used from a notebook or script.
+    # 7. Plot the verification ROC with the paper's FMR/FNMR axes.
     roc_figure, ax = plt.subplots()
     ax.plot(fmr, fnmr)
     ax.set_xlabel("False match rate (%)")
@@ -109,6 +113,28 @@ def performance_evaluation(
     ax.set_ylim(0, 100)
     ax.grid(True)
     roc_figure.tight_layout()
+
+    # 8. Save the two required plots and two tables in the project's figures
+    # folder. Use the script location so the folder does not depend on where
+    # Python was launched. Save before showing the plot windows.
+    output_dir = Path(__file__).resolve().parent / "figures"
+    output_dir.mkdir(exist_ok=True)
+    dimension_figure.savefig(output_dir / "figure10_crr_vs_dimension.png", dpi=300, bbox_inches="tight")
+    roc_figure.savefig(output_dir / "figure11_verification_roc.png", dpi=300, bbox_inches="tight")
+
+    with (output_dir / "table3_crr.csv").open("w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Measure", "Original CRR (%)", f"Reduced CRR (%) ({dimensions[-1]}D)"])
+        for metric in ("L1", "L2", "cosine"):
+            writer.writerow([metric, crr["original"][metric], crr["reduced"][metric]])
+
+    with (output_dir / "table4_verification.csv").open("w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["FMR limit (%)", "Cosine distance threshold", "FMR (%)", "FNMR (%)"])
+        for row in threshold_table:
+            writer.writerow([row["target_fmr"], row["threshold"], row["fmr"], row["fnmr"]])
+
+    print(f"\nSaved tables and plots to {output_dir}")
     plt.show()
 
     return {
