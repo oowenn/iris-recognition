@@ -1,10 +1,15 @@
 """Extract Ma's texture features (section 3.3, equations 3-6)."""
 
+import cv2
+import numpy as np
 
-def feature_extraction(
-    enhanced, roi_rows=48, block_size=8,
-    sigmas=((3.0, 1.5), (4.5, 1.5)), frequencies=None,
-):
+# Write the kernel formula and block statistics with NumPy; use cv2.filter2D
+# with floating-point output to apply each kernel. filter2D is correlation,
+# which equals convolution for these centered, odd-sized, symmetric kernels.
+# cv2.getGaborKernel does not construct the paper's circular carrier.
+
+
+def feature_extraction(enhanced, roi_rows=48, block_size=8,sigmas=((3.0, 1.5), (4.5, 1.5)), frequencies=None,):
     """Return a 1D vector of 1536 features with the default image dimensions.
 
     enhanced is the 64x512 enhanced iris. roi_rows keeps the rows nearest
@@ -12,7 +17,7 @@ def feature_extraction(
     sigmas gives (sigma_x, sigma_y) in pixels for the two filter channels.
     frequencies supplies two radial carrier frequencies in cycles/pixel;
     None marks this unresolved implementation choice, not a numeric default.
-    """
+    """ 
     # TODO: select enhanced[:roi_rows, :].
     # TODO: construct Gaussian envelopes modulated by cos(2*pi*f*sqrt(x*x+y*y)),
     #       including the 1/(2*pi*sigma_x*sigma_y) factor in equation 3.

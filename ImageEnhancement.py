@@ -1,5 +1,13 @@
 """Correct illumination and improve local contrast (section 3.2.3)."""
 
+import cv2
+import numpy as np
+
+# Write the block layout, block means, and background subtraction with NumPy.
+# Use cv2.resize(..., interpolation=cv2.INTER_CUBIC) for illumination upsampling
+# and cv2.equalizeHist on each uint8 32x32 block. Document how corrected float
+# intensities are mapped to uint8. CLAHE is not the paper's stated equalization.
+
 
 def image_enhancement(normalized, background_block=16, histogram_block=32):
     """Return an enhanced grayscale array with the same shape as normalized.

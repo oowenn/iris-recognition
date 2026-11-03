@@ -1,5 +1,12 @@
 """Fisher dimension reduction and nearest centers (section 3.4)."""
 
+import numpy as np
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+# Use LinearDiscriminantAnalysis(solver="svd") to fit Fisher directions.
+# Write class means, the three distance formulas, and rotation minimization
+# with NumPy. LDA's predict() is a different classifier from this pipeline.
+
 
 def fit_matcher(train_features, train_labels, n_components=107):
     """Fit using session 1 only; return a dictionary describing the matcher.
@@ -13,8 +20,12 @@ def fit_matcher(train_features, train_labels, n_components=107):
     'classes' (108,) ordered eye IDs; 'centers' (108, 7, feature_dimension).
     """
     # TODO: fit a shared Fisher projection using only training features/labels.
-    #       Select a solver suitable for more features than training samples.
+    #       Flatten image/angle axes and repeat each image label seven times.
+    #       Fit LDA with solver="svd" and keep scalings_[:, :n_components].
+    #       n_components=None means skip LDA in this wrapper, not in sklearn.
     # TODO: project features as in equation 7 (or retain them for the raw run).
+    #       Use features @ projection consistently for equation 7. sklearn's
+    #       SVD transform() also subtracts a mean, which changes cosine scores.
     # TODO: average the three training images for each eye at each angle,
     #       keeping seven separate class centers rather than merging angles.
     raise NotImplementedError("TODO: fit Fisher projection and class centers")

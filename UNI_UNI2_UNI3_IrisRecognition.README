@@ -1,8 +1,9 @@
 Iris recognition - minimal project scaffold
 
 Status
-The seven Python files follow GroupProject.pdf. Dataset discovery and pipeline
-wiring are implemented; the recognition and evaluation algorithms are TODOs.
+The seven Python files follow GroupProject.pdf. Dataset discovery, pipeline
+wiring, iris localization, and normalization are implemented; the remaining
+stages are TODOs.
 The main script currently prints the session split. Calling run_experiment()
 will reach an explicit NotImplementedError until the algorithm bodies are filled
 in. This is a starting scaffold, not a completed submission or measured model.
@@ -10,9 +11,59 @@ in. This is a starting scaffold, not a completed submission or measured model.
 Run from this directory
     .venv/bin/python IrisRecognition.py
 
-The existing environment has NumPy and OpenCV for the starter. For a new
-environment, install numpy and opencv-python. SciPy/scikit-learn and matplotlib
-can be used when implementing Fisher reduction and plotting.
+To visually compare localized eyes with normalized iris strips:
+    .venv/bin/python normalization_verify.py
+The verification script prints output shapes and displays three training images.
+
+Packages
+    numpy           -> import numpy as np
+    opencv-python   -> import cv2
+    scikit-learn    -> sklearn.discriminant_analysis and sklearn.metrics
+    matplotlib      -> import matplotlib.pyplot as plt
+These imports are placed in the corresponding modules, ready for their TODOs.
+They are already installed in the existing .venv. To install in this environment:
+    uv pip install --python .venv/bin/python numpy opencv-python scikit-learn matplotlib
+For an environment with pip, use python -m pip install followed by those names.
+SciPy is installed as a scikit-learn dependency; no direct SciPy usage is planned.
+
+What we write and what packages handle
+The assignment specifies the algorithm and asks us to explain its logic and
+parameters. It does not explicitly require standard operations to be implemented
+from scratch or give a package whitelist. The split below is our implementation
+recommendation, not an instructor-stated rule. "Write" includes using NumPy
+array operations; it does not mean writing every pixel operation as a Python loop.
+
+- IrisRecognition: write the session split and stage orchestration (already
+  present); pathlib finds files and cv2.imread reads the grayscale images.
+- IrisLocalization: NumPy handles projections and center distances; OpenCV
+  handles Otsu thresholding, connected components, smoothing, and Hough circles.
+  The pupil uses its mask centroid and equal-area radius. For the outer iris,
+  choose the Hough circle whose center is closest to the pupil.
+- IrisNormalization: NumPy builds the source-coordinate grids from both
+  circles using equation 2; cv2.remap performs bilinear interpolation. The
+  output is float32 with the original intensity scale, normally 0..255.
+- ImageEnhancement: write the 16x16 averaging and illumination subtraction.
+  Use cv2.resize with INTER_CUBIC, then cv2.equalizeHist per 32x32 block.
+  Document the float-to-uint8 mapping. CLAHE changes the stated method.
+- FeatureExtraction: write the paper's kernel formula, ROI selection, 8x8
+  block statistics, and feature ordering. Let cv2.filter2D apply each custom
+  kernel in floating point. Ordinary getGaborKernel uses a different carrier.
+- IrisMatching: use LinearDiscriminantAnalysis(solver="svd") for Fisher
+  directions. Use its learned scalings_ as W and project with features @ W
+  for equation 7. Its SVD transform() additionally centers data, which affects
+  cosine distance. Write the seven class centers, distances, and minimum over
+  rotations with NumPy. Do not substitute LDA.predict() for nearest centers.
+- PerformanceEvaluation: write the experiments, CRR, and genuine/impostor
+  pair labels. Use roc_curve with negative distances, then FMR=fpr and
+  FNMR=1-tpr. Convert thresholds back by negating them. Use matplotlib to plot.
+
+API references
+    https://docs.opencv.org/4.x/da/d53/tutorial_py_houghcircles.html
+    https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html
+    https://docs.opencv.org/4.x/d4/d1b/tutorial_histogram_equalization.html
+    https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html
+    https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html
+    https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_curve.html
 
 Dataset layout
     CASIA Iris Image Database (version 1.0)/001/1/*.bmp
@@ -23,10 +74,18 @@ session-2 images for testing (432 images). Keep this split fixed.
 
 Design and implementation order
 1. IrisLocalization.py: grayscale image -> pupil and iris (x, y, radius).
-   Start with section 3.2.1: coarse pupil estimate, local thresholding, then
-   Canny/Hough refinement. The assignment permits alternative localization.
+   Uses section 3.2.1's coarse pupil estimate and two threshold refinements.
+   A simple OpenCV Hough search estimates the outer boundary with radii from
+   80-130 px. If no circle is found, use a rough 105-pixel circle centered on
+   the pupil. This fallback is an estimate, not a detected boundary. The code
+   has five numbered steps with parameter explanations. It is intentionally
+   naive: eyelids and weak iris boundaries can cause incorrect circles, and
+   the project's recognition target is not yet established.
 2. IrisNormalization.py: image and circles -> 64x512 unwrapped image.
-   Follow equation 2, with radial rows and counterclockwise angular columns.
+   Implements equation 2 in five numbered steps, with radial rows and
+   counterclockwise angular columns. angle_deg changes the starting angle.
+   Uses Y/rows for radial sampling and replicates border pixels when a circle
+   extends beyond the image. This simple version does not mask eyelids.
 3. ImageEnhancement.py: subtract illumination estimated from 16x16 block
    means and bicubic interpolation, then equalize each 32x32 region.
 4. FeatureExtraction.py: filter the first 48 rows using the two circularly

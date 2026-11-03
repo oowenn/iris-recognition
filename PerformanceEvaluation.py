@@ -1,6 +1,13 @@
 """Prepare identification and verification results (section 4.3)."""
 
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import roc_curve
+
 from IrisMatching import fit_matcher, iris_matching
+
+# Write the experiment loops, CRR, and genuine/impostor labels with NumPy.
+# Use roc_curve for threshold counts and matplotlib for the required figures.
 
 
 def performance_evaluation(
@@ -24,6 +31,9 @@ def performance_evaluation(
     # TODO: for verification, label each test-to-class score as genuine when
     #       test_labels[row] == classes[column], otherwise as an impostor.
     # TODO: sweep distance thresholds; accept scores <= threshold.
+    #       roc_curve(genuine.ravel(), -distances.ravel(),
+    #                 drop_intermediate=False) returns fpr, tpr, thresholds.
+    #       Convert to FMR=fpr, FNMR=1-tpr, distance_thresholds=-thresholds.
     #       FMR = accepted impostor claims / all impostor claims.
     #       FNMR = rejected genuine claims / all genuine claims.
     # TODO: Table 4: report thresholds with FMR and FNMR percentages.
