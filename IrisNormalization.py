@@ -3,7 +3,7 @@ import numpy as np
 
 def iris_normalization(image, pupil, iris, rows=64, cols=512, angle_deg=0):
     """
-    Maps the iris ring region to a rectangular grid of size (rows, cols)
+    Maps the iris ring region to a rectangular grid of size (rows, cols).
     Ma et al., 2003 (3.2.2)
     """
     # unpack inputs
