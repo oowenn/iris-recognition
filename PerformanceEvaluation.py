@@ -120,9 +120,9 @@ def performance_evaluation(
         for row in threshold_table:
             writer.writerow([row["target_fmr"], row["threshold"], row["fmr"], row["fnmr"]])
 
-    # displauy plots
+    # display plots
+    # plt.show()
     print(f"\nSaved tables and plots to {output_dir}")
-    plt.show()
 
     # return results and figures
     return {
