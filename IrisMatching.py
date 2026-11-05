@@ -3,7 +3,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 def iris_matching(train_features, train_labels, test_features, n_components=107):
     """
-    Compute L1, L2, and cosine distances between test features and mean of each eye's rotation templates.
+    Compute L1, L2, and cosine distances between test features and mean of train features across rotations.
     Ma et al., 2003 (3.4)
     """
     # convert features to float64
@@ -37,10 +37,7 @@ def iris_matching(train_features, train_labels, test_features, n_components=107)
     centers = np.asarray(centers)
 
     # create a dictionary to hold the distance matrices for L1, L2, and cosine distances
-    distances = {
-        metric: np.zeros((len(test_features), len(classes)))
-        for metric in ("L1", "L2", "cosine")
-    }
+    distances = {metric: np.zeros((len(test_features), len(classes))) for metric in ("L1", "L2", "cosine")}
 
     # compare each test image with each eye's mean rotation templates
     for sample_index, feature in enumerate(test_features):
