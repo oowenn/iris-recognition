@@ -1,0 +1,131 @@
+We recognize iris texture using Fisher linear discriminant analysis (LDA) and
+nearest-center classification. An image passes through:
+Grayscale image -> iris boundaries -> rectangular strip -> enhanced texture
+-> 1,536 features -> Fisher projection -> comparison with known eyes.
+
+Libraries: OpenCV (opencv-python, cv2) processes images; NumPy (numpy, np)
+handles arrays/math; scikit-learn (sklearn) supplies LDA and ROC calculations;
+
+Step 1: Read an image and keep training separate from testing
+
+IrisRecognition.py defines:
+    load_dataset(data_dir=DATA_DIR) -> (train, test)
+    extract_features(samples, angles) -> (features, labels)
+    run_experiment(data_dir=DATA_DIR) -> results dictionary
+    main() -> None
+
+load_dataset() returns (path, eye ID) pairs: session 1 contains 324 training
+images, session 2 contains 432 test images, across 108 eyes. Separate sessions
+test recognition on later captures. main() starts run_experiment(), which calls
+extract_features() and then evaluates recognition.
+
+    cv2.imread(path, cv2.IMREAD_GRAYSCALE) -> 280x320 brightness array
+For each image, extract_features() runs steps 2-5. Training uses seven starting
+angles (-9,-6,-3,0,3,6,9 degrees) to accommodate eye rotation; testing uses zero.
+Features reach matching as training (324,7,1536) and testing (432,1536) arrays.
+
+Step 2: Locate the iris so surrounding regions do not dominate recognition
+
+    iris_localization(image, window_size=120) -> (pupil, iris)
+Each circle is (center_x, center_y, radius). In IrisLocalization.py, the darkest
+row/column estimates the pupil center. Two refinement passes select the largest
+dark component in a 120x120 window; its centroid and sqrt(area/pi) define the pupil.
+
+    cv2.GaussianBlur(image, (5,5), 0) -> smoothed image: suppresses noise.
+    cv2.threshold(window, 0, 255, type) -> (threshold, mask): Otsu plus
+        inverted-binary flags automatically separate dark foreground pixels.
+    cv2.connectedComponentsWithStats(mask) -> (count, labels, stats, centroids):
+        groups connected pixels and measures areas/centers.
+    cv2.HoughCircles(image, method, dp, minDist, ...) -> circles or None:
+        finds circular boundaries using HOUGH_GRADIENT here.
+Choose the outer circle nearest the pupil within radii 80-130 pixels; fall back
+to the pupil center and radius 105 if none is detected.
+
+Step 3: Unwrap the ring to give different images comparable coordinates
+
+    iris_normalization(image, pupil, iris, rows=64, cols=512, angle_deg=0)
+        -> float32 array (64,512)
+IrisNormalization.py samples angles along columns and interpolates from pupil
+to outer boundary along rows. angle_deg changes the starting rotation. NumPy
+arange(), sin(), cos(), and deg2rad() construct the coordinate maps.
+
+    cv2.remap(image, map_x, map_y, interpolation, borderMode=...) -> sampled image
+Bilinear interpolation fills the strip; BORDER_REPLICATE handles out-of-image
+coordinates. Pupil and iris circles may have different centers.
+
+Step 4: Correct lighting to make texture differences easier to compare
+
+    image_enhancement(normalized, background_block=16, histogram_block=32)
+        -> uint8 array (64,512)
+ImageEnhancement.py estimates illumination using 16x16 block means, enlarges
+and subtracts it, then improves contrast independently in each 32x32 block.
+
+    array.mean(axis) -> averages over the selected axis.
+    cv2.resize(background, (width,height), interpolation=cv2.INTER_CUBIC)
+        -> full-sized illumination estimate.
+    cv2.normalize(corrected, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        -> values rescaled to the uint8 range.
+    cv2.equalizeHist(block) -> histogram-equalized block with improved contrast.
+
+Step 5: Describe the texture with numbers
+
+    feature_extraction(enhanced, roi_rows=48, block_size=8,
+                       sigmas=((3.0,1.5),(4.5,1.5)), frequencies=None)
+        -> float32 vector (1536,)
+FeatureExtraction.py keeps the 48 rows nearest the pupil to reduce outer-region
+occlusions. Two Gaussian/radial-cosine filters capture texture at different scales.
+frequencies=None selects the chosen frequencies 1/8 and 1/16 cycles/pixel.
+
+    np.meshgrid(x, y) -> coordinate grids for constructing the kernels.
+    cv2.filter2D(roi, cv2.CV_32F, kernel, borderType=cv2.BORDER_REFLECT_101)
+        -> texture responses, using reflected image edges.
+Each 8x8 response block contributes mean magnitude and mean absolute deviation:
+these measure texture strength and variation. Two filters x 384 blocks x two
+statistics = 1,536 features. The deviation is not standard deviation.
+
+Step 6: Learn what distinguishes eyes, then match a test image
+
+    iris_matching(train_features, train_labels, test_features, n_components=107)
+        -> (classes, distances)
+IrisMatching.py learns a smaller feature space that separates different eyes
+relative to variation within an eye. With 108 classes, Fisher permits at most
+107 discriminant directions.
+
+    sklearn.discriminant_analysis.LinearDiscriminantAnalysis(
+        solver="svd", n_components=k) -> LDA estimator
+    lda.fit(X, y) -> fitted estimator; lda.scalings_ stores projection directions.
+reshape() combines training images/rotations into 2,268 rows; np.repeat() repeats
+the labels accordingly. Only training data fits LDA. Both datasets are projected
+using the selected directions and matrix multiplication.
+
+Average the three training images per eye separately at each rotation, obtaining
+seven reference centers. Compare a test vector f against every center c:
+    L1 = sum(abs(f-c))
+    Squared L2 = sum((f-c)**2)
+    Cosine distance = 1 - dot(f,c)/(norm(f)*norm(c))
+np.linalg.norm() computes vector lengths; np.clip() bounds similarity to [-1,1].
+Keep the minimum over rotations, then predict the closest eye. Each distance
+matrix is (432,108). n_components=None compares original features without LDA.
+
+Step 7: Evaluate identification and verification
+    performance_evaluation(train_features, train_labels, test_features,
+                           test_labels, dimensions=(20,40,60,80,100,107))
+        -> dictionary of CRRs, thresholds, ROC data, and figures
+PerformanceEvaluation.py uses argmin(axis=1) to predict the nearest eye and
+100*mean(predicted == test_labels) to obtain CRR. It compares original and
+107-dimensional features for all three distances and plots cosine CRR across k.
+
+
+
+Limitations and improvements
+The method may struggle with blurry images, uneven lighting, or eyes partly
+covered by eyelids or eyelashes. The current localization code assumes that the
+largest dark area in the search window is the pupil and chooses the outer iris
+circle mainly by how close its center is to the pupil center. Shadows or eyelashes
+can confuse these choices, while the fixed size limits and default radius used
+when detection fails may not fit every image. Incorrect boundaries can cause
+later steps to process the wrong region and contribute to recognition errors.
+We could improve the method by checking detected boundaries more carefully and
+reducing the influence of covered areas. Since the dataset is relatively small, using
+more varied images to refine the settings and then testing on separate images
+would help us assess how well the method works under different conditions.
